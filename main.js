@@ -26,8 +26,17 @@ async function getData(filepath) {
         const worksheet = workbook.Sheets[sheetName];
 
         const jsonData = xlsx.utils.sheet_to_json(worksheet);
+        const formattedData = jsonData.map((item) => {
+            for (const column of Object.keys(item)) {
+                if (typeof item[column] === "number") {
+                    item[column] = item[column].toLocaleString("id-ID");
+                }
+            }
 
-        return jsonData;
+            return item;
+        });
+
+        return formattedData;
     } catch (e) {
         throw e;
     }
