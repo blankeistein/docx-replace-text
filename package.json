@@ -1,16 +1,26 @@
 {
-  "name": "docx-replace-text",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "docxtemplater": "^3.65.2",
-    "pizzip": "^3.2.0",
-    "xlsx": "^0.18.5"
-  }
+    "name": "lestariilmu-tools",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint"
+    },
+    "dependencies": {
+        "@material-tailwind/react": "^2.1.10",
+        "clsx": "^2.1.1",
+        "eslint": "8.37.0",
+        "eslint-config-next": "13.2.4",
+        "lucide-react": "^0.525.0",
+        "next": "13.2.4",
+        "react": "18.2.0",
+        "react-dom": "18.2.0"
+    },
+    "devDependencies": {
+        "autoprefixer": "^10.4.21",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.17"
+    }
 }
