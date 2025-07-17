@@ -38,20 +38,22 @@ async function main() {
         let templatePath = await askQuestion("File master: ");
         templatePath = path.resolve(templatePath).trim();
 
-        const content = fs.readFileSync(templatePath, "binary");
-        const zip = new PizZip(content);
-
         let dataPath = await askQuestion("File data: ");
         dataPath = path.resolve(dataPath).trim();
         const data = await getData(dataPath);
 
-        const outputPath = await askQuestion("Simpan di folder mana: ");
-        const prefixName = await askQuestion(
-            "Template Nama (contoh File {name} - {index}): "
+        let outputPath = await askQuestion("Simpan di folder mana: ");
+        outputPath = outputPath.trim();
+        let prefixName = await askQuestion(
+            'Template Nama (contoh "File {name} - {index}"): '
         );
+
+        prefixName = prefixName.trim();
 
         let index = 1;
         for (const item of data) {
+            const content = fs.readFileSync(templatePath, "binary");
+            const zip = new PizZip(content);
             console.log(item);
             const doc = new Docxtemplater(zip, {
                 paragraphLoop: true,
@@ -77,6 +79,8 @@ async function main() {
             fs.writeFileSync(path.resolve(outputPath, filename), buf);
             index += 1;
         }
+
+        console.log("Done");
     } catch (e) {
         console.log(`[ERROR] ${e.message}`);
     }
