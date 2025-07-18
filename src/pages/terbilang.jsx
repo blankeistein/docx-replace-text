@@ -1,6 +1,7 @@
 import { terbilang } from "@/utils/terbilang";
 import {
     Alert,
+    Breadcrumbs,
     Button,
     Card,
     CardBody,
@@ -9,8 +10,9 @@ import {
     Typography,
 } from "@material-tailwind/react";
 import clsx from "clsx";
-import { CheckCircle2, CopyIcon, RotateCcwIcon } from "lucide-react";
+import { CheckCircle2, CopyIcon, HomeIcon, RotateCcwIcon } from "lucide-react";
 import Head from "next/head";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function Home() {
@@ -74,9 +76,17 @@ export default function Home() {
                 <Card className="mx-auto max-w-2xl p-2">
                     <CardBody>
                         <div>
-                            <Typography variant="h1" className="text-2xl mb-4">
-                                Konversi nomor ke teks
-                            </Typography>
+                            <Breadcrumbs className="mb-5">
+                                <Link
+                                    href="/"
+                                    className="flex justify-center items-center gap-2"
+                                >
+                                    <HomeIcon />
+                                </Link>
+                                <Typography variant="small">
+                                    Konversi harga ke teks
+                                </Typography>
+                            </Breadcrumbs>
 
                             <div className="flex flex-col gap-4">
                                 <Input
