@@ -1,3 +1,5 @@
+import Docxtemplater from "docxtemplater";
+import Pizzip from "pizzip";
 import { read, utils } from "xlsx";
 
 export async function getData(buffer) {
@@ -21,4 +23,20 @@ export async function getData(buffer) {
     } catch (e) {
         throw e;
     }
+}
+
+export async function replaceDocx(docx, data) {
+    const zip = new Pizzip(docx);
+    const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+    });
+
+    doc.render(data);
+    const buff = doc.getZip().generate({
+        type: "nodebuffer",
+        compression: "DEFLATE",
+    });
+
+    return buff;
 }

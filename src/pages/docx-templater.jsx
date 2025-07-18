@@ -1,4 +1,5 @@
-import { getData } from "@/utils/docx-templater";
+import { getData, replaceDocx } from "@/utils/docx-templater";
+import download, { readAsArrayBuffer } from "@/utils/general";
 import {
     Breadcrumbs,
     Card,
@@ -10,7 +11,15 @@ import {
     Typography,
 } from "@material-tailwind/react";
 import clsx from "clsx";
-import { CheckIcon, DownloadIcon, HomeIcon, MinusIcon } from "lucide-react";
+import JSZip from "jszip";
+import {
+    CheckIcon,
+    CopyIcon,
+    DownloadIcon,
+    HomeIcon,
+    MinusIcon,
+} from "lucide-react";
+import { motion } from "motion/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
@@ -26,6 +35,14 @@ export default function DocxTemplater() {
     const [tableHead, setTableHead] = useState([]);
     const [tableBody, setTableBody] = useState([]);
 
+    const handleInputTemplate = async (e) => {
+        const { target } = e;
+        if (target.files[0]) {
+            const file = target.files[0];
+            setData((prev) => ({ ...prev, masterFile: file }));
+        }
+    };
+
     const handleInputData = async (e) => {
         const { target } = e;
         if (target.files[0]) {
@@ -37,6 +54,7 @@ export default function DocxTemplater() {
                 setTableHead(Object.keys(excel[0]));
                 setTableBody(excel);
             };
+            setData((prev) => ({ ...prev, dataFile: file }));
 
             reader.readAsArrayBuffer(file);
         }
@@ -77,14 +95,95 @@ export default function DocxTemplater() {
     };
 
     const handleCopyHeader = useCallback((value) => {
-        if (navigator in window) {
+        if ("navigator" in window) {
             window.navigator.clipboard
                 .writeText("{" + value + "}")
-                .then(() => alert("Berhasil disalin"));
+                .then(() => toast.success("Berhasil disalin"));
         } else {
             toast.error("Browser mu tidak mendukung navigator");
         }
     }, []);
+
+    const handleDownload = useCallback(
+        async (index) => {
+            let toastId = toast.loading("Waiting");
+            try {
+                const renderData = tableBody[index];
+                renderData["index"] = 0;
+
+                const result = await readAsArrayBuffer(data.masterFile);
+                const buf = replaceDocx(result, renderData);
+
+                const mimeType =
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                const blob = new Blob([buf], { type: mimeType });
+
+                const filename =
+                    data.filenamePrefix.replace(
+                        /\{([^}]+)\}/g,
+                        (match, key) => {
+                            return renderData[key] !== undefined
+                                ? renderData[key]
+                                : match;
+                        }
+                    ) + ".docx";
+                download(filename, blob);
+            } catch (e) {
+                toast.error(e.message);
+            } finally {
+                toast.dismiss(toastId);
+            }
+        },
+        [data, tableBody]
+    );
+
+    const handleDownloadAll = useCallback(async () => {
+        if (selectAll < 1) return;
+
+        let toastId = toast.loading("Sedang mengunduh semua data ...");
+        try {
+            const zip = new JSZip();
+            let index = 1;
+            for (const item of tableBody) {
+                if (!item.__checked) {
+                    continue;
+                }
+                console.log(item);
+
+                item["index"] = index;
+
+                const result = await readAsArrayBuffer(data.masterFile);
+                const buf = await replaceDocx(result, item);
+
+                const mimeType =
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                const blob = new Blob([buf], { type: mimeType });
+
+                const filename =
+                    data.filenamePrefix.replace(
+                        /\{([^}]+)\}/g,
+                        (match, key) => {
+                            return item[key] !== undefined ? item[key] : match;
+                        }
+                    ) + ".docx";
+                zip.file(filename, blob);
+                index += 1;
+            }
+
+            let zipFilename = data.masterFile.name.split(".");
+            delete zipFilename[zipFilename.length - 1];
+            zipFilename = zipFilename.join(".");
+
+            download(
+                zipFilename + "zip",
+                await zip.generateAsync({ type: "blob" })
+            );
+        } catch (e) {
+            toast.error(e.message);
+        } finally {
+            toast.dismiss(toastId);
+        }
+    }, [data, tableBody]);
 
     return (
         <>
@@ -92,8 +191,8 @@ export default function DocxTemplater() {
                 <title>Docx Templater</title>
             </Head>
             <main className="w-full min-h-screen bg-blue-gray-50 p-1">
-                <div className="flex flex-col mx-auto max-w-5xl">
-                    <Card className="mt-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-2 mx-auto max-w-6xl px-5">
+                    <Card className="mt-4 lg:sticky">
                         <CardBody>
                             <Breadcrumbs className="mb-8">
                                 <Link
@@ -114,6 +213,7 @@ export default function DocxTemplater() {
                                         label="File Template"
                                         size="lg"
                                         accept="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                        onChange={handleInputTemplate}
                                     />
                                     <Input
                                         type="file"
@@ -136,6 +236,19 @@ export default function DocxTemplater() {
                                     }
                                 />
                                 <div className="flex flex-wrap gap-1">
+                                    <Chip
+                                        variant="gradient"
+                                        value="{index}"
+                                        className="rounded-full cursor-pointer"
+                                        onClick={() =>
+                                            setData((prev) => ({
+                                                ...prev,
+                                                filenamePrefix:
+                                                    prev.filenamePrefix.trim() +
+                                                    " {index}",
+                                            }))
+                                        }
+                                    />
                                     {tableHead.map((chip, index) => (
                                         <Chip
                                             key={`${chip + index}`}
@@ -146,7 +259,7 @@ export default function DocxTemplater() {
                                                 setData((prev) => ({
                                                     ...prev,
                                                     filenamePrefix:
-                                                        prev.filenamePrefix +
+                                                        prev.filenamePrefix.trim() +
                                                         " {" +
                                                         chip +
                                                         "}",
@@ -159,9 +272,12 @@ export default function DocxTemplater() {
                         </CardBody>
                     </Card>
                     {tableHead.length > 0 && tableBody.length > 0 && (
-                        <Card className="my-4">
+                        <Card className="my-4  overflow-auto">
                             <CardBody>
-                                <div className="overflow-auto">
+                                <Typography variant="h5" className="mb-5">
+                                    Data
+                                </Typography>
+                                <div className="lg:h-[calc(100vh-9.2rem)] overflow-auto">
                                     <table className="w-full min-w-max table-auto text-left">
                                         <thead>
                                             <tr>
@@ -193,29 +309,41 @@ export default function DocxTemplater() {
                                                                 )
                                                             }
                                                         />
-                                                        <IconButton size="sm">
+                                                        <IconButton
+                                                            size="sm"
+                                                            disabled={
+                                                                selectAll < 1
+                                                            }
+                                                            onClick={
+                                                                handleDownloadAll
+                                                            }
+                                                        >
                                                             <DownloadIcon className="size-4" />
                                                         </IconButton>
                                                     </div>
                                                 </th>
                                                 {tableHead.map((head) => (
-                                                    <th
+                                                    <motion.th
                                                         key={head}
-                                                        className="hover:bg-blue-gray-100 border-b border-gray-300 py-4 px-2 min-w-36 cursor-pointer"
+                                                        className="group hover:bg-blue-gray-100 border-b border-gray-300 py-4 px-2 min-w-36 cursor-pointer"
                                                         onClick={() =>
                                                             handleCopyHeader(
                                                                 head
                                                             )
                                                         }
+                                                        whileTap={{
+                                                            scale: 0.9,
+                                                        }}
                                                     >
                                                         <Typography
                                                             variant="small"
                                                             color="blue-gray"
-                                                            className="font-bold leading-none"
+                                                            className="font-bold leading-none flex items-center gap-2"
                                                         >
                                                             {head}
+                                                            <CopyIcon className="group-hover:opacity-100 opacity-0 transition-all size-4" />
                                                         </Typography>
-                                                    </th>
+                                                    </motion.th>
                                                 ))}
                                             </tr>
                                         </thead>
@@ -250,7 +378,14 @@ export default function DocxTemplater() {
                                                                         )
                                                                     }
                                                                 />
-                                                                <IconButton size="sm">
+                                                                <IconButton
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        handleDownload(
+                                                                            index
+                                                                        )
+                                                                    }
+                                                                >
                                                                     <DownloadIcon className="size-4" />
                                                                 </IconButton>
                                                             </div>
