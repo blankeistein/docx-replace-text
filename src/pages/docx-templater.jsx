@@ -25,6 +25,14 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 
+const SELECT_ALL_STATUS = {
+    NONE: 0,
+    INDETERMINATE: 1,
+    ALL: 2,
+};
+
+const DEFAULT_FILENAME_PREFIX = "File {index}";
+
 export default function DocxTemplater() {
     const [data, setData] = useState({
         masterFile: null,
@@ -62,10 +70,11 @@ export default function DocxTemplater() {
 
     const selectAll = useMemo(() => {
         const checked = tableBody.filter((item) => item.__checked);
-        if (checked.length === 0) return 0;
-        if (checked.length < tableBody.length) return 1;
+        if (checked.length === 0) return SELECT_ALL_STATUS.NONE;
+        if (checked.length < tableBody.length)
+            return SELECT_ALL_STATUS.INDETERMINATE;
 
-        return 2;
+        return SELECT_ALL_STATUS.ALL;
     }, [tableBody]);
 
     const handleItemCheck = (index) => {
@@ -88,7 +97,8 @@ export default function DocxTemplater() {
             prev.map((item) => {
                 const newItem = { ...item };
 
-                newItem.__checked = selectAll === 2 ? false : true;
+                newItem.__checked =
+                    selectAll === SELECT_ALL_STATUS.ALL ? false : true;
                 return newItem;
             })
         );
@@ -106,6 +116,11 @@ export default function DocxTemplater() {
 
     const handleDownload = useCallback(
         async (index) => {
+            if (!data.masterFile) {
+                toast.error("Masukan file template");
+                return;
+            }
+
             let toastId = toast.loading("Waiting");
             try {
                 const renderData = tableBody[index];
@@ -138,7 +153,12 @@ export default function DocxTemplater() {
     );
 
     const handleDownloadAll = useCallback(async () => {
-        if (selectAll < 1) return;
+        if (selectAll === SELECT_ALL_STATUS.NONE) return;
+
+        if (!data.masterFile) {
+            toast.error("Masukan file template");
+            return;
+        }
 
         let toastId = toast.loading("Sedang mengunduh semua data ...");
         try {
@@ -285,14 +305,15 @@ export default function DocxTemplater() {
                                                     <div className="flex items-center">
                                                         <Checkbox
                                                             checked={
-                                                                selectAll > 0
+                                                                selectAll >
+                                                                SELECT_ALL_STATUS.NONE
                                                             }
                                                             onChange={
                                                                 handleSelectAll
                                                             }
                                                             icon={
                                                                 selectAll ===
-                                                                2 ? (
+                                                                SELECT_ALL_STATUS.ALL ? (
                                                                     <CheckIcon
                                                                         strokeWidth={
                                                                             3
@@ -312,11 +333,13 @@ export default function DocxTemplater() {
                                                         <IconButton
                                                             size="sm"
                                                             disabled={
-                                                                selectAll < 1
+                                                                selectAll <
+                                                                SELECT_ALL_STATUS.INDETERMINATE
                                                             }
                                                             onClick={
                                                                 handleDownloadAll
                                                             }
+                                                            aria-label="Download Semua"
                                                         >
                                                             <DownloadIcon className="size-4" />
                                                         </IconButton>
@@ -385,6 +408,7 @@ export default function DocxTemplater() {
                                                                             index
                                                                         )
                                                                     }
+                                                                    aria-label="Download"
                                                                 >
                                                                     <DownloadIcon className="size-4" />
                                                                 </IconButton>
